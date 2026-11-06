@@ -40,6 +40,7 @@ class Api:
         return self.request("PUT", path, json=json)
 
     def chunk_lines(self, n: int):
-        r = self.c.get(f"/events/chunks/{n}")
-        r.raise_for_status()
-        return r.text.splitlines()
+        with self.c.stream("GET", f"/events/chunks/{n}") as r:
+            r.raise_for_status()
+            for line in r.iter_lines():
+                yield line

@@ -25,8 +25,8 @@ class Logger:
 
 def open_store(api: Api, state_dir: str):
     state = api.get("/sim/state")[1]
-    first = api.chunk_lines(0)
-    fp = hashlib.sha1("\n".join(first[:2]).encode()).hexdigest()[:10]
+    first = [line for _, line in zip(range(2), api.chunk_lines(0))]
+    fp = hashlib.sha1("\n".join(first).encode()).hexdigest()[:10]
     path = Path(state_dir) / f"{state['scenario']}-{fp}.db"
     store = Store(path)
     seen = store.get_kv("sim_seen")
@@ -58,8 +58,7 @@ def run(url: str, state_dir: str):
     gov = Governance(store, api, log)
     policy = Policy(store, api, gov, log)
     reconciled = store.get_kv("reconciled_world", False)
-    print(f"scenario {state['scenario']} at {state['ts']}, state {store.db.execute('PRAGMA database_list').fetchone()[2]}",
-          file=sys.stderr)
+    print(f"scenario {state['scenario']} at {state['ts']}", file=sys.stderr)
 
     while True:
         t0 = time.time()
