@@ -7,7 +7,7 @@ from . import stats
 
 MIN_ARM = 300
 MIN_DID = 100
-DID_RATIO = 0.7
+DID_RATIO = 0.65
 HALLUC_FLOOR = 0.02
 HALLUC_MARGIN = 0.015
 HALLUC_MIN_CONNECTED = 200
@@ -341,11 +341,11 @@ class Policy:
         for did, t in qual.items():
             if did in open_inc or did in excluded or live.get(did, 0) <= 0:
                 continue
-            others = sorted(v["c"] / v["d"] for k, v in qual.items() if k != did)
-            if len(others) < 2:
+            peers = [v for k, v in qual.items() if k != did]
+            if not peers:
                 continue
-            med = others[len(others) // 2]
-            if (t["c"] / t["d"]) / med <= DID_RATIO:
+            med = sum(v["c"] for v in peers) / sum(v["d"] for v in peers)
+            if med > 0 and (t["c"] / t["d"]) / med <= DID_RATIO:
                 self.open_incident(wid, "did_flagged", did, now,
                                    {"pickup_rate_24h": round(t["c"] / t["d"], 4),
                                     "peer_median_pickup": round(med, 4), "dials_24h": t["d"]})
@@ -413,7 +413,7 @@ class Policy:
                                             "method": "reweight 24h per-DID pickup by target shares"}},
                 "summary": f"caller_id to {', '.join(f'{k} {v:.2f}' for k, v in sorted(target.items()))}"
                            + (" (flagged DID removed)" if urgent else ""),
-                "rationale": "per-DID pickup over 24h; a DID with at least 150 dials and pickup 30% below its"
+                "rationale": "per-DID pickup over 24h; a DID with at least 100 dials and pickup 35% below its"
                              " peers is removed; remaining healthy DIDs share traffic evenly.",
                 "impact": min(1.0, abs(pred) / 0.10) if pred else 0.05, "incident_id": None}
 
@@ -448,7 +448,7 @@ class Policy:
                              f"{dim} {prev['winner']} stopped winning in the last 24h, back to exploration",
                              {"dim": dim, "winner": prev["winner"]})
                     winner = None
-                    target = self.explore_target(dim, arms, tab, now)
+                    target = {a: 1.0 / len(arms) for a in arms}
             self.store.db.execute("INSERT OR REPLACE INTO experiments VALUES (?,?,?,?,?,?)",
                                   (wid, dim, "exploit" if winner else "explore", winner, now,
                                    json.dumps(detail, default=str)))
@@ -468,7 +468,7 @@ class Policy:
         return [{"kind": "experiment", "dists": dists, "diff": diffs, "dry_run": dry,
                  "summary": "; ".join(notes), "rationale": "; ".join(notes) + ". Shares use 48h of connected calls"
                  " for this prompt. Winners need Holm-adjusted p<0.05 and at least 2pp lift; otherwise Thompson"
-                 " sampling with a 20% exploration floor. Pickup guardrail excludes arms more than 2pp below the"
+                 f" sampling with a {int(EXPLORE_FLOOR * 100)}% exploration floor. Pickup guardrail excludes arms more than 2pp below the"
                  " workflow's pickup.",
                  "impact": min(1.0, abs(pred_total) / 0.10), "incident_id": None}]
 
@@ -515,10 +515,6 @@ class Policy:
         detail["mode"] = "explore"
         detail["thompson_best_probability"] = {a: round(p, 3) for a, p in zip(ids, pbest)}
         return stats.shares(raw), None, detail
-
-    def explore_target(self, dim, arms, tab, now):
-        k = len(arms)
-        return {a: 1.0 / k for a in arms}
 
     def winner_decayed(self, winner, dim, arms, tab24):
         w = tab24.get(winner)
