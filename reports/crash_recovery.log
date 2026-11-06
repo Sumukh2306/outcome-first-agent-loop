@@ -1,14 +1,14 @@
-kill 1: sent SIGKILL at sim minute 5580
-kill 2: sent SIGKILL at sim minute 9060
-kill 3: sent SIGKILL at sim minute 12240
-kill 4: sent SIGKILL at sim minute 13860
-final state: {"scenario":"public_02_incidents","sim_minute":14400,"ts":"2027-01-14T00:00:00+05:30","end_minute":14400,"finished":true,"tick_minutes":15,"credits_remaining":189.0,"chunks":133,"last_event_id":324331}
+kill 1: sent SIGKILL at sim minute 6660
+kill 2: sent SIGKILL at sim minute 9180
+kill 3: sent SIGKILL at sim minute 12060
+kill 4: sent SIGKILL at sim minute 13740
+final state: {"scenario":"public_02_incidents","sim_minute":14400,"ts":"2027-01-14T00:00:00+05:30","end_minute":14400,"finished":true,"tick_minutes":15,"credits_remaining":186.0,"chunks":133,"last_event_id":324341}
 duplicate proposal ids: 0
 intents left unresolved: 0
 approvals applied more than once: 0
 auto-applies repeated: 0
 | workflow | conclusion rate | Δ | pickup | Δ | engagement | Δ | engagement gap captured | hallucinated calls (base) |
 |---|---|---|---|---|---|---|---|---|
-| ks_cancel | 0.368 | +56.3% | 0.246 | +36.0% | 0.512 | +9.5% | 46% | 94 (348) |
-| nw_kyc | 0.467 | +24.9% | 0.291 | +24.1% | 0.605 | -0.6% | 0% | 35 (29) |
-| nw_renewal | 0.475 | +9.7% | 0.284 | +8.4% | 0.558 | +0.6% | 10% | 56 (54) |
+| ks_cancel | 0.373 | +58.2% | 0.248 | +37.1% | 0.514 | +9.9% | 44% | 100 (348) |
+| nw_kyc | 0.470 | +25.8% | 0.297 | +26.7% | 0.596 | -2.0% | 0% | 26 (29) |
+| nw_renewal | 0.470 | +8.5% | 0.288 | +9.7% | 0.546 | -1.5% | -4% | 70 (54) |

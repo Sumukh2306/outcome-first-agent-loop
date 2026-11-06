@@ -20,6 +20,7 @@ WINNER_SHARE = 0.9
 MATERIAL = 0.1
 PROBE_SHARE = 0.05
 DID_KNOWN_DIALS = 50
+PROMOTE_RATIO = 0.8
 CALLER_ID_DIM = "caller_id"
 EXPERIMENT_DIMS = ("welcome_message", "voice")
 VALIDATION_N = 500
@@ -354,13 +355,21 @@ class Policy:
                 self.resolve(inc["incident_id"], wid, now, f"{did} is out of rotation")
 
     def excluded_dids(self, wid, now):
-        rows = self.store.all("SELECT DISTINCT subject FROM incidents WHERE workflow_id=? AND kind='did_flagged'"
-                              " AND opened_minute > ?", (wid, now - DID_EXCLUSION_MINUTES))
-        return {r["subject"] for r in rows}
+        rows = self.store.all("SELECT subject, COUNT(*) n, MAX(opened_minute) last FROM incidents"
+                              " WHERE workflow_id=? AND kind='did_flagged' GROUP BY subject", (wid,))
+        return {r["subject"] for r in rows
+                if now - r["last"] < DID_EXCLUSION_MINUTES * 2 ** min(r["n"] - 1, 4)}
 
     def caller_target(self, wid, wf, now, healthy):
         tab = self.marginal(self.window(wid, now, 24), CALLER_ID_DIM)
         known = [o for o in healthy if tab.get(o, {"d": 0})["d"] >= DID_KNOWN_DIALS]
+        weak = []
+        for o in known:
+            rest = [tab[k] for k in known if k != o]
+            rd = sum(v["d"] for v in rest)
+            if rd and tab[o]["c"] / tab[o]["d"] < PROMOTE_RATIO * sum(v["c"] for v in rest) / rd:
+                weak.append(o)
+        known = [o for o in known if o not in weak]
         unknown = [o for o in healthy if o not in known]
         if not known:
             return None
