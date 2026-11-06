@@ -458,6 +458,12 @@ class Policy:
             dists[dim] = target
             diffs[f"allocations.default.{dim}"] = target
             pred = self.predict(tab, cur_dist, target)
+            pick_pred = self.predict(tab, cur_dist, target, "pick")
+            if pred < 0 or pick_pred < -GUARD_DROP / 2:
+                self.log(wid, "guardrail_blocked",
+                         f"{dim} move skipped: predicted engagement {pred:+.3f}, pickup {pick_pred:+.3f}",
+                         {"dim": dim, "target": target})
+                continue
             dry[dim] = {"arm_rates": detail["rates"], "predicted_engagement_rel_change": pred,
                         "replay_window_hours": 48, "method": "reweight 48h connected-call arm rates by proposed shares"}
             notes.append(f"{dim}: {detail['mode']}" + (f" winner {winner}" if winner else ""))

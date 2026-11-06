@@ -5,7 +5,7 @@
 ## 0. TL;DR
 
 - One always-on Python process polls the simulator every simulated hour, ingests events, decides, and acts only through `/approvals` or the one auto-apply the policy allows (caller ID).
-- public_02: conclusion rate +27.3% over the no-op baseline, pickup +22.6%, engagement +1.4%. public_01: +13.0%, +8.0%, +3.6%.
+- public_02: conclusion rate +28.4% over the no-op baseline, pickup +22.1%, engagement +3.0%. public_01: +14.7%, +7.3%, +5.5%.
 - Hallucination incident on ks_cancel was fixed through an approved prompt switch with validation evidence, 390 minutes after the supervisor edit that caused it.
 - Killed with SIGKILL four to five times mid run, it finished with no duplicate proposals and the same grade as an uncrashed run. public_03 runs in 100 s of wall clock for 5 days.
 - Not built: per person call time (C4), fair credit and approver allocation across tenants (C15). Per cohort optimisation is only partly done.
@@ -186,25 +186,25 @@ public_02 (`reports/public_02.md`):
 
 | workflow | conclusion | Δ | pickup | Δ | engagement | Δ |
 |---|---|---|---|---|---|---|
-| ks_cancel | 0.366 | +55.6% | 0.245 | +35.4% | 0.509 | +8.8% |
-| nw_kyc | 0.459 | +22.8% | 0.288 | +23.1% | 0.598 | -1.7% |
-| nw_renewal | 0.472 | +8.9% | 0.290 | +10.6% | 0.543 | -2.1% |
-| ALL | 0.421 | +27.3% | 0.269 | +22.6% | 0.540 | +1.4% |
+| ks_cancel | 0.368 | +56.3% | 0.246 | +36.0% | 0.512 | +9.5% |
+| nw_kyc | 0.467 | +24.9% | 0.291 | +24.1% | 0.605 | -0.6% |
+| nw_renewal | 0.475 | +9.7% | 0.284 | +8.4% | 0.558 | +0.6% |
+| ALL | 0.425 | +28.4% | 0.268 | +22.1% | 0.548 | +3.0% |
 
-30 changes applied: 11 neutral, 17 beneficial, 2 harmful.
+26 changes applied: 7 neutral, 16 beneficial, 3 harmful.
 
 public_01 (`reports/public_01.md`):
 
 | workflow | conclusion | Δ | pickup | Δ | engagement | Δ |
 |---|---|---|---|---|---|---|
-| ks_cancel | 0.384 | +12.3% | 0.259 | +5.8% | 0.518 | +5.3% |
-| nw_kyc | 0.435 | +18.8% | 0.284 | +17.4% | 0.594 | -0.6% |
-| nw_renewal | 0.460 | +10.6% | 0.280 | +5.9% | 0.561 | +3.5% |
-| ALL | 0.420 | +13.0% | 0.271 | +8.0% | 0.548 | +3.6% |
+| ks_cancel | 0.397 | +16.2% | 0.258 | +5.3% | 0.536 | +8.9% |
+| nw_kyc | 0.436 | +19.0% | 0.289 | +19.5% | 0.584 | -2.1% |
+| nw_renewal | 0.460 | +10.6% | 0.274 | +3.7% | 0.573 | +5.8% |
+| ALL | 0.426 | +14.7% | 0.269 | +7.3% | 0.559 | +5.5% |
 
-20 changes applied: 5 neutral, 10 beneficial, 5 harmful.
+19 changes applied: 8 neutral, 10 beneficial, 1 harmful.
 
-Interpretation: most of the gain is pickup, from caller ID health and the hallucination fix. Engagement is the weak side. nw_kyc and nw_renewal are slightly negative on engagement in public_02, which is the part I would fix first. Harmful changes in public_01 (5 of 20) are mostly exploration moves; in public_02 two caller ID steps on ks_cancel were harmful (v12 and v17, both an auto-applied DID step that worsened pickup by 0.030). I would shorten the probe period and require a pre-check that a re-probed DID is not the flagged one.
+Interpretation: most of the gain is pickup, from caller ID health and the hallucination fix. Engagement is the weak side. Experiment moves are now skipped when the dry run predicts lower engagement or a pickup drop beyond half the guardrail, which cut harmful changes in public_01 from 5 to 1 and lifted engagement in both scenarios. nw_kyc stays slightly negative because higher pickup dilutes engagement per connected call. In public_02 the remaining harmful changes include caller ID steps; earlier two caller ID steps on ks_cancel were harmful (v12 and v17, both an auto-applied DID step that worsened pickup by 0.030). I would shorten the probe period and require a pre-check that a re-probed DID is not the flagged one.
 
 ## 12. Trade-offs & rejected alternatives
 
@@ -219,8 +219,8 @@ Interpretation: most of the gain is pickup, from caller ID health and the halluc
 
 ## 13. Known weaknesses
 
-- Exploration still produces harmful changes (5 of 20 in public_01).
-- Engagement is slightly negative on two Northwind workflows in public_02.
+- Some harmful changes remain (1 of 19 in public_01, 3 of 26 in public_02), mostly caller ID steps.
+- Engagement on nw_kyc is slightly negative in both scenarios, partly a composition effect from higher pickup.
 - Per cohort and per person optimisation is cut; only `default` allocations are used.
 - Excluded DIDs get a 5% re-probe after 3 days, which can cost pickup.
 - Decay rollback is slow: the decayed variant still had 0.39 of traffic at day 6.
