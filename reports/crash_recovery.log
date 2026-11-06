@@ -1,0 +1,15 @@
+kill 1: sent SIGKILL at sim minute 4380
+kill 2: sent SIGKILL at sim minute 6720
+kill 3: sent SIGKILL at sim minute 9120
+kill 4: sent SIGKILL at sim minute 11340
+kill 5: sent SIGKILL at sim minute 14160
+final state: {"scenario":"public_02_incidents","sim_minute":14400,"ts":"2027-01-14T00:00:00+05:30","end_minute":14400,"finished":true,"tick_minutes":15,"credits_remaining":192.0,"chunks":136,"last_event_id":324350}
+duplicate proposal ids: 0
+intents left unresolved: 0
+approvals applied more than once: 0
+auto-applies repeated: 0
+| workflow | conclusion rate | Δ | pickup | Δ | engagement | Δ | engagement gap captured | hallucinated calls (base) |
+|---|---|---|---|---|---|---|---|---|
+| ks_cancel | 0.342 | +45.1% | 0.227 | +25.1% | 0.522 | +11.6% | 52% | 99 (348) |
+| nw_kyc | 0.442 | +18.4% | 0.281 | +19.9% | 0.597 | -1.9% | 0% | 21 (29) |
+| nw_renewal | 0.480 | +10.8% | 0.290 | +10.5% | 0.554 | -0.1% | 23% | 57 (54) |
