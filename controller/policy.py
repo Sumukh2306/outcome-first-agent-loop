@@ -21,6 +21,8 @@ MATERIAL = 0.1
 PROBE_SHARE = 0.05
 DID_KNOWN_DIALS = 50
 PROMOTE_RATIO = 0.8
+SHRINK = 60
+MIN_GAIN = 0.002
 CALLER_ID_DIM = "caller_id"
 EXPERIMENT_DIMS = ("welcome_message", "voice")
 VALIDATION_N = 500
@@ -468,7 +470,7 @@ class Policy:
             diffs[f"allocations.default.{dim}"] = target
             pred = self.predict(tab, cur_dist, target)
             pick_pred = self.predict(tab, cur_dist, target, "pick")
-            if pred < 0 or pick_pred < -GUARD_DROP / 2:
+            if pred < (0 if winner else MIN_GAIN) or pick_pred < -GUARD_DROP / 2:
                 self.log(wid, "guardrail_blocked",
                          f"{dim} move skipped: predicted engagement {pred:+.3f}, pickup {pick_pred:+.3f}",
                          {"dim": dim, "target": target})
@@ -541,17 +543,17 @@ class Policy:
         return w["e"] / w["c"] < oe / oc - EFFECT
 
     def predict(self, tab, old, new, metric="eng"):
-        def rate(t):
-            if metric == "eng":
-                return t["e"] / t["c"] if t["c"] else None
-            return t["c"] / t["d"] if t["d"] else None
-        rates = {a: rate(t) for a, t in tab.items() if rate(t) is not None}
-        if not rates:
+        def parts(t):
+            return (t["e"], t["c"]) if metric == "eng" else (t["c"], t["d"])
+        num = sum(parts(t)[0] for t in tab.values())
+        den = sum(parts(t)[1] for t in tab.values())
+        if not den:
             return 0.0
-        num = sum(t["e"] if metric == "eng" else t["c"] for t in tab.values())
-        den = sum(t["c"] if metric == "eng" else t["d"] for t in tab.values())
-        pooled = num / den if den else 0.0
-        r = {a: rates.get(a, pooled) for a in sorted(set(old) | set(new))}
+        pooled = num / den
+        r = {}
+        for a in sorted(set(old) | set(new)):
+            n, d = parts(tab.get(a, {"e": 0, "c": 0, "d": 0}))
+            r[a] = (n + SHRINK * pooled) / (d + SHRINK)
         base = sum(old.get(a, 0) * r[a] for a in r)
         after = sum(new.get(a, 0) * r[a] for a in r)
         return round(after / base - 1, 5) if base else 0.0

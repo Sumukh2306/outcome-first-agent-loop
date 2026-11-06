@@ -5,7 +5,7 @@
 ## 0. TL;DR
 
 - One always-on Python process polls the simulator every simulated hour, ingests events, decides, and acts only through `/approvals` or the one auto-apply the policy allows (caller ID).
-- public_02: conclusion rate +28.8% over the no-op baseline, pickup +23.6%, engagement +2.0%. public_01: +14.5%, +7.8%, +5.0%.
+- public_02: conclusion rate +27.8% over the no-op baseline, pickup +23.2%, engagement +1.4%. public_01: +12.2%, +8.8%, +1.7%.
 - Hallucination incident on ks_cancel was fixed through an approved prompt switch with validation evidence, 390 minutes after the supervisor edit that caused it.
 - Killed with SIGKILL four to five times mid run, it finished with no duplicate proposals and the same grade as an uncrashed run. public_03 runs in 100 s of wall clock for 5 days.
 - Not built: per person call time (C4), fair credit and approver allocation across tenants (C15). Per cohort optimisation is only partly done.
@@ -154,7 +154,7 @@ First failures at 10x: Python JSON parsing and the single SQLite writer, then th
 
 Method: `scripts/crash_test.sh` runs public_02 and SIGKILLs the controller at staged random delays, then restarts it each time, then runs to the end.
 
-Result (log in `reports/crash_recovery.log`): 4 kills at the sim minutes listed in the log; scenario finished at 14400; 0 duplicate proposal ids; 0 unresolved intents; 0 approvals applied twice; 0 repeated auto-applies. The final grade matched the uncrashed run (conclusion rates 0.373, 0.470, 0.470). An earlier 5 kill run before the last detector change was also clean.
+Result (log in `reports/crash_recovery.log`): 4 kills at the sim minutes listed in the log; scenario finished at 14400; 0 duplicate proposal ids; 0 unresolved intents; 0 approvals applied twice; 0 repeated auto-applies. The final grade matched the uncrashed run (overall conclusion rate 0.423). An earlier 5 kill run before the last detector change was also clean.
 
 State lost: at most the current hourly step, which is redone. Idempotency keys: proposal ids are `{workflow}-m{minute}-{hash}`, applies are checked against config history. Simulator 5xx and transport errors are retried with backoff (up to 10 s); 409, 410 and 403 have explicit handlers. A single workflow failing logs a `controller_error` audit row and the others continue.
 
@@ -186,25 +186,25 @@ public_02 (`reports/public_02.md`):
 
 | workflow | conclusion | Δ | pickup | Δ | engagement | Δ |
 |---|---|---|---|---|---|---|
-| ks_cancel | 0.373 | +58.2% | 0.248 | +37.1% | 0.514 | +9.9% |
-| nw_kyc | 0.470 | +25.8% | 0.297 | +26.7% | 0.596 | -2.0% |
-| nw_renewal | 0.470 | +8.5% | 0.288 | +9.7% | 0.546 | -1.5% |
-| ALL | 0.426 | +28.8% | 0.271 | +23.6% | 0.543 | +2.0% |
+| ks_cancel | 0.355 | +50.7% | 0.250 | +37.8% | 0.489 | +4.5% |
+| nw_kyc | 0.463 | +23.8% | 0.289 | +23.2% | 0.601 | -1.3% |
+| nw_renewal | 0.489 | +13.0% | 0.288 | +9.8% | 0.566 | +2.0% |
+| ALL | 0.423 | +27.8% | 0.270 | +23.2% | 0.540 | +1.4% |
 
-30 changes applied: 11 neutral, 15 beneficial, 4 harmful.
+18 changes applied: 6 neutral, 11 beneficial, 1 harmful.
 
 public_01 (`reports/public_01.md`):
 
 | workflow | conclusion | Δ | pickup | Δ | engagement | Δ |
 |---|---|---|---|---|---|---|
-| ks_cancel | 0.395 | +15.7% | 0.259 | +6.0% | 0.530 | +7.7% |
-| nw_kyc | 0.425 | +16.0% | 0.280 | +15.9% | 0.590 | -1.3% |
-| nw_renewal | 0.468 | +12.3% | 0.280 | +6.0% | 0.570 | +5.2% |
-| ALL | 0.426 | +14.5% | 0.271 | +7.8% | 0.556 | +5.0% |
+| ks_cancel | 0.374 | +9.7% | 0.261 | +6.6% | 0.502 | +2.0% |
+| nw_kyc | 0.453 | +23.5% | 0.288 | +19.0% | 0.605 | +1.4% |
+| nw_renewal | 0.453 | +8.7% | 0.281 | +6.3% | 0.546 | +0.9% |
+| ALL | 0.417 | +12.2% | 0.273 | +8.8% | 0.539 | +1.7% |
 
-23 changes applied: 9 neutral, 11 beneficial, 3 harmful.
+10 changes applied: 5 neutral, 5 beneficial, 0 harmful.
 
-Interpretation: most of the gain is pickup, from caller ID health and the hallucination fix. Engagement is the weak side. Experiment moves are skipped when the dry run predicts lower engagement or a pickup drop beyond half the guardrail. Caller ID changes are cut by two rules: a DID flagged again waits twice as long before its next probe (3, 6, 12 days, capped at 48), and a probed DID is only promoted to a full share once its pickup is at least 0.8 of its peers. That removed the harmful caller ID changes in public_01 and left one in public_02, the first re-probe of D2 after its exclusion. nw_kyc engagement stays slightly negative because higher pickup dilutes engagement per connected call. Harmful welcome and voice changes still appear (3 in public_01, 3 in public_02), because exploration is noisy and the dry run only sees the last 48h.
+Interpretation: most of the gain is pickup, from caller ID health and the hallucination fix. Engagement is the weak side. Experiment moves are skipped when the dry run predicts lower engagement or a pickup drop beyond half the guardrail. Caller ID changes are cut by two rules: a DID flagged again waits twice as long before its next probe (3, 6, 12 days, capped at 48), and a probed DID is only promoted to a full share once its pickup is at least 0.8 of its peers. That removed the harmful caller ID changes in public_01 and left one in public_02, the first re-probe of D2 after its exclusion. nw_kyc engagement stays slightly negative because higher pickup dilutes engagement per connected call. Welcome and voice predictions now shrink each arm's rate toward the pooled rate (pseudo count 60), and a non-winner move needs a predicted engagement gain of at least 0.2%. That removed every harmful welcome and voice change in both scenarios, at the cost of fewer experiment moves, so engagement lift is smaller (+1.7% and +1.4%). The one harmful change left is the first caller ID re-probe of D2 in public_02.
 
 ## 12. Trade-offs & rejected alternatives
 
@@ -219,7 +219,7 @@ Interpretation: most of the gain is pickup, from caller ID health and the halluc
 
 ## 13. Known weaknesses
 
-- Some harmful changes remain (3 of 23 in public_01, 4 of 30 in public_02), mostly welcome and voice exploration; one is the first caller ID re-probe.
+- One harmful change remains (the first caller ID re-probe in public_02). The experiment gate is conservative, so engagement lift is modest and some real winners are probably delayed.
 - Engagement on nw_kyc is slightly negative in both scenarios, partly a composition effect from higher pickup.
 - Per cohort and per person optimisation is cut; only `default` allocations are used.
 - Excluded DIDs get a 5% re-probe after 3 days (longer after repeat flags), which can cost pickup once.
